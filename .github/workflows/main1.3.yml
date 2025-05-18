@@ -27,11 +27,13 @@ jobs:
         run: |
           git clone --mirror https://github.com/harry0703/MoneyPrinterTurbo.git target-mirror
           cd target-mirror
-          git remote set-url --push origin https://${{ secrets.TARGET_TOKEN }}@github.com/githurosi/YourUsername-MoneyPrinterTurbo-Mirror.git
+          # 修正URL格式并添加权限参数
+          git remote set-url --push origin https://${{ secrets.TARGET_TOKEN }}:x-oauth-basic@github.com/githurosi/YourUsername-MoneyPrinterTurbo-Mirror.git
  
       - name: Push to target repo
         run: |
           cd target-mirror
+          # 添加force_sync条件判断
           if [[ "${{ github.event.inputs.force_sync }}" == "true" ]]; then
             git push --mirror --force
           else
