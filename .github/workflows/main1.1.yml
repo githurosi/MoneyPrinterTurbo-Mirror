@@ -27,7 +27,7 @@ jobs:
         run: |
           git clone --mirror https://github.com/harry0703/MoneyPrinterTurbo.git target-mirror
           cd target-mirror
-          git remote set-url --push origin https://${{ secrets.TARGET_TOKEN }}@github.com/YOUR_USERNAME/TARGET_REPO.git
+          git remote set-url --push origin https://${{ secrets.TARGET_TOKEN }}@github.com/https://github.com/githurosi/YourUsername-MoneyPrinterTurbo-Mirror.git
 
       - name: Push to target repo
         run: |
