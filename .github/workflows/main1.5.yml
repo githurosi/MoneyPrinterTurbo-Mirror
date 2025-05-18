@@ -26,7 +26,7 @@ jobs:
       - name: Checkout target repo
         uses: actions/checkout@v4
         with:
-          repository: githurosi/YourUsername-MoneyPrinterTurbo-Mirror  # 替换为您的目标仓库
+          repository: githurosi/MoneyPrinterTurbo-Mirror  # 替换为您的目标仓库
           path: target
           token: ${{ secrets.TARGET_TOKEN }}  # 使用具有写权限的token
           fetch-depth: 1
