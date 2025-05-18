@@ -1,0 +1,53 @@
+# .github/workflows/mirror-repo.yml
+name: Mirror 
+
+on:  # 触发配置开启
+  push:  # push触发
+    branches:  # 分支限制
+      - main  # 仅main分支触发
+  schedule:  # 定时任务配置
+    - cron: "0 1 * * *"  # UTC时间1:00（北京时间9:00）
+  workflow_dispatch:  # Actions标签页手动触发
+    inputs:  # 输入参数配置
+      force_sync:  # 参数名称
+        description: 'Force immediate sync'  # 强制同步
+
+jobs:
+  sync-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          repository: harry0703/MoneyPrinterTurbo
+          path: source
+          fetch-depth: 1  # 只需最近一次提交
+ 
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: githurosi/YourUsername-MoneyPrinterTurbo-Mirror  # 替换为您的目标仓库
+          path: target
+          token: ${{ secrets.TARGET_TOKEN }}  # 使用具有写权限的token
+          fetch-depth: 1
+ 
+      - name: Extract and sync logs
+        run: |
+          # 从源仓库读取README.md内容
+          LOG_CONTENT=$(cat source/README.md)
+           
+          # 写入目标仓库（这里以同步到target/logs目录为例）
+          mkdir -p target/logs
+          echo "$LOG_CONTENT" > target/logs/homepage-logs-$(date +'%Y%m%d').md
+          
+          # 提交更改
+          cd target
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add .
+          git commit -m "chore: sync homepage logs $(date +'%Y-%m-%d')"
+          git push
+ 
+      - name: Cleanup
+        run: |
+          rm -rf source target
