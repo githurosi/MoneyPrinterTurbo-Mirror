@@ -1,0 +1,35 @@
+name: Fixed Clone Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  clone:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 显式检出仓库
+        uses: actions/checkout@v4
+        with:
+          repository: harry0703/MoneyPrinterTurbo.git  # ✅ 完整地址
+          path: ./moneyprinter-turbo  # ✅ 唯一路径
+          fetch-depth: 0
+          ref: main  # ✅ 指定分支
+
+      - name: 验证克隆结果
+        run: |
+          # 检查关键文件
+          test -f ./moneyprinter-turbo/README.md || exit 1
+          
+          # 验证分支
+          cd ./moneyprinter-turbo
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          [ "$CURRENT_BRANCH" = "main" ] || exit 1
+
+      - name: 安全提交（如果需要）
+        if: success()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🔄 成功克隆 MoneyPrinterTurbo"
+          branch: main
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
