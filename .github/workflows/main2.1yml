@@ -1,7 +1,17 @@
-name: Fixed Clone Workflow
+name: Test workflow  # 测试工作流
 
-on:
-  workflow_dispatch:
+on:  # 触发配置开启
+  push:  # push触发
+    branches:  # 分支限制
+      - main  # 仅main分支触发
+  schedule:  # 定时任务配置
+    - cron: "0 1 * * *"  # UTC时间1:00（北京时间9:00）
+  workflow_dispatch:  # Actions标签页手动触发
+    inputs:  # 输入参数配置
+      force_sync:  # 参数名称
+        description: 'Force immediate sync'  # 强制同步
+        type: boolean  # 参数类型
+        default: false  # 默认值
 
 jobs:
   clone:
