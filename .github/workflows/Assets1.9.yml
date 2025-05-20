@@ -39,7 +39,9 @@ jobs:
           response=$(curl -s https://api.github.com/repos/${REPO}/releases/latest)
           TAG_NAME=$(echo "$response" | jq -r '.tag_name')
           ASSETS=$(echo "$response" | jq -r '.assets[].name' | tr '\n' ',') # 资产列表转为逗号分隔
-          RELEASE_NOTES=$(echo "$response" | jq -r '.body') # 直接使用英文日志
+          RELEASE_NOTES=$(echo "$response" | jq -r '.body')
+          # 对日志内容进行简单转义处理（以转义单引号为例）
+          RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed "s/'/\\\'/g") 
 
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "ASSETS=$ASSETS" >> $GITHUB_OUTPUT
@@ -71,4 +73,9 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 🔄 同步 ${TAG_NAME} 版本日志
-          files: README.md
+          file_pattern: README.md # 修改为符合Action要求的形式
+    ```
+
+### 验证方法
+1. 运行修改后的工作流，查看工作流的运行日志，确认“获取最新版本信息”步骤不再出现格式错误相关的报错，以及“提交更改”步骤不再出现输入选项不识别的警告。
+2. 检查仓库中的 `README.md` 文件，确认其内容已正确更新为最新的资产和日志信息。
