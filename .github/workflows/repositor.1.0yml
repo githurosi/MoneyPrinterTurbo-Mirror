@@ -1,4 +1,4 @@
-name: Clone Latest OpenCorePkg Assets
+name: Download Latest OpenCore Assets
 on:
   workflow_dispatch:  # 手动触发，可按需添加自动触发（如定时）
   schedule:
@@ -22,7 +22,11 @@ jobs:
           # 调用 GitHub API 获取最新 Release
           response=$(curl -s https://api.github.com/repos/acidanthera/OpenCorePkg/releases/latest)
           export TAG_NAME=$(echo "$response" | jq -r '.tag_name')
-          export ASSETS_URL=$(echo "$response" | jq -r '.assets[0].browser_download_url')
+          # 假设优先下载 OpenCore-<版本>-RELEASE.zip 资产，若不存在再找其他
+          export ASSETS_URL=$(echo "$response" | jq -r '.assets[] | select(.name | startswith("OpenCore-" + env.TAG_NAME + "-RELEASE.zip")) | .browser_download_url')
+          if [ -z "$ASSETS_URL" ]; then
+            export ASSETS_URL=$(echo "$response" | jq -r '.assets[0].browser_download_url')
+          fi
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "ASSETS_URL=$ASSETS_URL" >> $GITHUB_OUTPUT
 
@@ -30,13 +34,7 @@ jobs:
         if: steps.get-latest-release.outputs.ASSETS_URL != ''
         run: |
           echo "开始下载最新资产: ${{ steps.get-latest-release.outputs.TAG_NAME }}"
-          wget -q --show-progress ${{ steps.get-latest-release.outputs.ASSETS_URL }} -O OpenCorePkg-latest.zip
-
-      - name: 解压资产（可选）
-        if: steps.get-latest-release.outputs.ASSETS_URL != ''
-        run: |
-          unzip -q OpenCorePkg-latest.zip -d OpenCoreAssets
-          rm OpenCorePkg-latest.zip  # 清理压缩包
+          wget -q --show-progress ${{ steps.get-latest-release.outputs.ASSETS_URL }} -O OpenCore-${{ steps.get-latest-release.outputs.TAG_NAME }}-RELEASE.zip
 
       - name: 提交更新
         if: steps.get-latest-release.outputs.ASSETS_URL != ''
@@ -44,6 +42,5 @@ jobs:
         with:
           commit_message: "📦 更新 OpenCorePkg 到 ${{ steps.get-latest-release.outputs.TAG_NAME }}"
           files: |
-            OpenCorePkg-latest.zip  # 保留压缩包或解压后的文件
-            OpenCoreAssets/
+            OpenCore-${{ steps.get-latest-release.outputs.TAG_NAME }}-RELEASE.zip
           commit_author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
