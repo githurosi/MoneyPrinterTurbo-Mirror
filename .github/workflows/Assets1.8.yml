@@ -1,4 +1,4 @@
-name: 同步最新版日志与主页介绍
+name: 同步最新版日志与主页介绍（无翻译）
 on:
   push:
     branches: [ main ]
@@ -24,10 +24,10 @@ jobs:
         with:
           fetch-depth: 1 # 快速克隆
 
-      - name: 安装依赖（解析/翻译工具）
+      - name: 安装依赖（仅保留解析工具）
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y jq translate-shell wget
+          sudo apt-get install -y jq wget # 移除 translate-shell
 
       - name: 获取最新版本信息
         id: get-release
@@ -39,25 +39,22 @@ jobs:
           response=$(curl -s https://api.github.com/repos/${REPO}/releases/latest)
           TAG_NAME=$(echo "$response" | jq -r '.tag_name')
           ASSETS=$(echo "$response" | jq -r '.assets[].name' | tr '\n' ',') # 资产列表转为逗号分隔
-          RELEASE_NOTES=$(echo "$response" | jq -r '.body')
-
-          # 翻译日志（失败则用原文）
-          TRANSLATED_NOTES=$(echo "$RELEASE_NOTES" | trans -b -e google -t zh-CN 2>/dev/null || echo "$RELEASE_NOTES")
+          RELEASE_NOTES=$(echo "$response" | jq -r '.body') # 直接使用英文日志
 
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "ASSETS=$ASSETS" >> $GITHUB_OUTPUT
-          echo "TRANSLATED_NOTES=$TRANSLATED_NOTES" >> $GITHUB_OUTPUT
+          echo "RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_OUTPUT
 
       - name: 生成主页内容
         run: |
           # 主页介绍（可自定义）
           HOMEPAGE_INTRO="# OpenCorePkg 最新版本同步\n这是一个自动同步 [OpenCorePkg](https://github.com/acidanthera/OpenCorePkg) 最新版本资产与日志的仓库。"
 
-          # 资产部分
-          ASSET_SECTION="\n### 最新版资产\n- ${ASSETS//,/\n- }" # 逗号转列表项
+          # 资产部分（转为Markdown列表）
+          ASSET_SECTION="\n### 最新版资产\n- ${ASSETS//,/\n- }"
 
-          # 日志部分
-          LOG_SECTION="\n### 更新日志\n#### ${TAG_NAME}\n${TRANSLATED_NOTES}"
+          # 日志部分（直接使用英文原文）
+          LOG_SECTION="\n### 更新日志\n#### ${TAG_NAME}\n${RELEASE_NOTES}"
 
           # 合并内容
           ALL_CONTENT="$HOMEPAGE_INTRO$ASSET_SECTION$LOG_SECTION"
