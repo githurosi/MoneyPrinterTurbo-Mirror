@@ -1,0 +1,115 @@
+name: 自动同步最新版本日志
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: "0 1 * * *" # 每天凌晨1点运行（UTC+8）
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: '是否强制更新（忽略版本检查）'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-log:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      new_version: ${{ steps.update.outputs.new_version }}
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          path: repo  # 检出到repo目录，避免与工作流文件冲突
+
+      - name: 安装依赖（翻译/解析工具）
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y pigz jq translate-shell
+
+      - name: 检查并更新日志
+        id: update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          start_time=$(date +%s)
+
+          log() {
+            local level=$1
+            shift
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')] [$level] $@"
+          }
+
+          # 配置参数
+          FORCE_UPDATE=${{ github.event.inputs.force_update || 'false' }}
+          LOCAL_VERSION=$(cat repo/version.txt 2>/dev/null || echo "")
+          REPO_OWNER="acidanthera"  # 源仓库所有者
+          REPO_NAME="OpenCorePkg"   # 源仓库名称
+          TARGET_PATH="repo"        # 目标目录
+
+          log "INFO" "开始同步 $REPO_OWNER/$REPO_NAME 日志..."
+          log "DEBUG" "本地版本: ${LOCAL_VERSION:-无}"
+
+          # 获取最新Release信息
+          REPO_URL="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases"
+          response=$(curl -s --retry 3 \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "$REPO_URL")
+
+          TAG_NAME=$(echo "$response" | jq -r '.[0].tag_name')
+          RELEASE_NOTES=$(echo "$response" | jq -r '.[0].body')
+          log "INFO" "最新版本: $TAG_NAME"
+
+          # 判断是否需要更新
+          if [ "$LOCAL_VERSION" = "$TAG_NAME" ] && [ "$FORCE_UPDATE" != "true" ]; then
+            log "INFO" "已是最新版本，无需更新"
+            echo "new_version=$LOCAL_VERSION" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 翻译更新日志（英文→中文，可改为其他语言）
+          log "INFO" "正在翻译更新日志..."
+          TRANSLATED_NOTES=$(echo "$RELEASE_NOTES" | trans -b -e google -t zh-CN)
+
+          # 格式化日志（添加缩进，适配Markdown）
+          FORMATTED_NOTES=$(echo "$TRANSLATED_NOTES" | sed 's/^/  - /')  # 每行添加两个空格和短横线
+
+          # 更新版本文件与日志
+          echo "$TAG_NAME" > "$TARGET_PATH/version.txt"
+          echo "$TRANSLATED_NOTES" > "$TARGET_PATH/changelog.md"
+
+          # 追加日志到README
+          echo -e "\n## 📅 更新日志" >> "$TARGET_PATH/README.md"
+          echo -e "### $TAG_NAME\n$FORMATTED_NOTES" >> "$TARGET_PATH/README.md"
+          log "INFO" "更新完成，新版本: $TAG_NAME"
+
+          # 输出版本号
+          echo "new_version=$TAG_NAME" >> $GITHUB_OUTPUT
+
+          # 性能统计
+          total_time=$(( $(date +%s) - start_time ))
+          log "INFO" "总执行时间: ${total_time}秒"
+
+      - name: 提交更改
+        if: always()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          repository: repo/  # 目标目录路径
+          commit_message: |
+            🔄 同步 ${REPO_NAME} 版本: ${{ steps.update.outputs.new_version }}
+            更新日志:
+            $(cat repo/changelog.md | head -n 3 | sed 's/^/    /')  # 显示前3行日志（缩进4空格）
+          branch: main
+          file_pattern: "repo/version.txt repo/changelog.md repo/README.md"
