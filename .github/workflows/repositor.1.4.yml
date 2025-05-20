@@ -1,0 +1,46 @@
+name: Update README with OpenCore Release Notes
+on:
+  workflow_dispatch:  # 手动触发，可按需添加自动触发（如定时）
+  schedule:
+    - cron: "0 0 * * *"  # 每天凌晨自动运行
+
+permissions:
+  contents: write  # 需写入权限以更新 README 文件
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 获取最新 Release 信息
+        id: get-latest-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 需在仓库 Secrets 中配置
+        run: |
+          # 调用 GitHub API 获取最新 Release
+          response=$(curl -s https://api.github.com/repos/acidanthera/OpenCorePkg/releases/latest)
+          export TAG_NAME=$(echo "$response" | jq -r '.tag_name')
+          export BODY=$(echo "$response" | jq -r '.body')
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "BODY=$BODY" >> $GITHUB_OUTPUT
+
+      - name: 检查并创建日志展示区域
+        run: |
+          if! grep -q "## OpenCore 最新版本更新日志" README.md; then
+            echo "未找到日志展示区域，正在创建..."
+            echo -e "\n## OpenCore 最新版本更新日志\n" >> README.md
+          fi
+
+      - name: 更新 README 文件
+        run: |
+          sed -i "s/### 最新版本：\[版本号\]/### 最新版本：${{ steps.get-latest-release.outputs.TAG_NAME }}/g" README.md
+          sed -i "s/\[具体更新日志内容\]/${{ steps.get-latest-release.outputs.BODY // /\\n}}/g" README.md
+
+      - name: 提交更改
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📄 更新 README 以展示 OpenCore 最新版本日志"
+          files: README.md
+          commit_author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
