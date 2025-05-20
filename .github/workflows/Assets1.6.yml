@@ -82,6 +82,8 @@ jobs:
 
       - name: 更新主界面（README.md）
         run: |
+          # 获取当前目录绝对路径
+          WORKING_DIR=$(pwd)
           ASSETS=(${{ steps.download-assets.outputs.ASSETS }})
           # 生成资产信息部分
           ASSET_INFO="### 最新版资产\n"
@@ -94,11 +96,17 @@ jobs:
           # 整合资产和日志信息
           ALL_CONTENT="$ASSET_INFO\n$LOG_INFO"
 
-          # 检查README.md是否存在，不存在则创建并写入内容
-          if [! -f README.md ]; then
-            echo "# 仓库信息" > README.md
+          # 明确README.md绝对路径
+          README_PATH="$WORKING_DIR/README.md"
+          # 检查README.md是否存在，不存在则创建并赋予权限
+          if [! -f $README_PATH ]; then
+            echo "# 仓库信息" > $README_PATH
+            chmod u+w $README_PATH
+          else
+            chmod u+w $README_PATH
           fi
-          echo -e "$ALL_CONTENT" >> README.md
+          echo "即将写入的内容: $ALL_CONTENT"
+          echo -e "$ALL_CONTENT" >> $README_PATH
 
       - name: 提交所有文件
         if: always()
