@@ -1,4 +1,4 @@
-name: 同步资产与更新日志（根目录版）
+name: 同步资产与更新日志（更新主界面）
 on:
   push:
     branches: [ main ]
@@ -74,7 +74,18 @@ jobs:
 
           # 更新版本文件和README
           echo "$TAG_NAME" > version.txt
-          echo -e "## 📅 更新日志\n### $TAG_NAME\n$TRANSLATED_NOTES" >> README.md
+      - name: 更新主界面（README.md）
+        run: |
+          # 生成资产信息部分
+          ASSET_INFO="### 最新版资产\n"
+          for asset in "${{ steps.download-assets.outputs.ASSETS }}"; do
+            ASSET_INFO+=" - $asset\n"
+          done
+          # 生成更新日志部分
+          LOG_INFO="### 更新日志\n"
+          LOG_INFO+="#### $TAG_NAME\n$TRANSLATED_NOTES"
+          # 写入README.md
+          echo -e "$ASSET_INFO\n$LOG_INFO" >> README.md
 
       - name: 提交所有文件
         if: always()
