@@ -66,14 +66,15 @@ jobs:
           # 仅在版本变更或强制更新时同步日志
           if [ "$LOCAL_VERSION" = "$TAG_NAME" ] && [ "$FORCE_UPDATE" != "true" ]; then
             echo "无需更新日志"
-            return
+            exit 0
           fi
 
           # 翻译日志（可选，如需英文日志可删除翻译行）
           TRANSLATED_NOTES=$(echo "$RELEASE_NOTES" | trans -b -e google -t zh-CN || echo "$RELEASE_NOTES")
 
-          # 更新版本文件和README
+          # 更新版本文件
           echo "$TAG_NAME" > version.txt
+
       - name: 更新主界面（README.md）
         run: |
           # 生成资产信息部分
