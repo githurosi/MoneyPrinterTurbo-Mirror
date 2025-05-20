@@ -1,0 +1,89 @@
+name: 同步资产与更新日志（根目录版）
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: "0 1 * * *" # 每天凌晨1点运行（UTC+8）
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: '是否强制更新（忽略版本检查）'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # 浅克隆加速
+
+      - name: 安装依赖
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y wget jq translate-shell unzip
+
+      - name: 下载最新资产
+        id: download-assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REPO_OWNER="acidanthera"
+          REPO_NAME="OpenCorePkg"
+          response=$(curl -s https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest)
+          TAG_NAME=$(echo "$response" | jq -r '.tag_name')
+          ASSETS=($(echo "$response" | jq -r '.assets[].name'))
+
+          # 下载所有资产（取消RELEASE/DEBUG过滤，直接下载全部）
+          for asset in "${ASSETS[@]}"; do
+            DOWNLOAD_URL=$(echo "$response" | jq -r ".assets[] | select(.name == \"$asset\") | .browser_download_url")
+            wget -q --show-progress "$DOWNLOAD_URL" -O "$asset"
+            echo "已下载: $asset"
+          done
+
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: 同步更新日志
+        id: update-log
+        run: |
+          set -euo pipefail
+          FORCE_UPDATE=${{ github.event.inputs.force_update || 'false' }}
+          LOCAL_VERSION=$(cat version.txt 2>/dev/null || echo "")
+          REPO_OWNER="acidanthera"
+          REPO_NAME="OpenCorePkg"
+
+          response=$(curl -s https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest)
+          TAG_NAME=$(echo "$response" | jq -r '.tag_name')
+          RELEASE_NOTES=$(echo "$response" | jq -r '.body')
+
+          # 仅在版本变更或强制更新时同步日志
+          if [ "$LOCAL_VERSION" = "$TAG_NAME" ] && [ "$FORCE_UPDATE" != "true" ]; then
+            echo "无需更新日志"
+            return
+          fi
+
+          # 翻译日志（可选，如需英文日志可删除翻译行）
+          TRANSLATED_NOTES=$(echo "$RELEASE_NOTES" | trans -b -e google -t zh-CN || echo "$RELEASE_NOTES")
+
+          # 更新版本文件和README
+          echo "$TAG_NAME" > version.txt
+          echo -e "## 📅 更新日志\n### $TAG_NAME\n$TRANSLATED_NOTES" >> README.md
+
+      - name: 提交所有文件
+        if: always()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: |
+            🔄 同步 ${TAG_NAME} 资产与日志
+            资产: ${{ join(steps.download-assets.outputs.ASSETS, ', ') }}
+          files: |
+            *.zip         # 所有资产压缩包
+            version.txt   # 版本文件
+            README.md     # 主页日志
