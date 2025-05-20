@@ -49,7 +49,7 @@ jobs:
           done
 
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "ASSETS=${ASSETS[*]}" >> $GITHUB_OUTPUT # 输出资产列表变量内容
+          echo "ASSETS=${ASSETS[*]}" >> $GITHUB_OUTPUT
 
       - name: 同步更新日志
         id: update-log
@@ -79,8 +79,6 @@ jobs:
       - name: 更新主界面（README.md）
         run: |
           ASSETS=(${{ steps.download-assets.outputs.ASSETS }})
-          echo "获取到的资产列表: ${ASSETS[*]}" # 再次确认获取的资产列表
-
           # 生成资产信息部分
           ASSET_INFO="### 最新版资产\n"
           for asset in "${ASSETS[@]}"; do
@@ -89,8 +87,12 @@ jobs:
           # 生成更新日志部分
           LOG_INFO="### 更新日志\n"
           LOG_INFO+="#### $TAG_NAME\n$TRANSLATED_NOTES"
-          # 写入README.md
-          echo -e "$ASSET_INFO\n$LOG_INFO" >> README.md
+          # 整合资产和日志信息
+          ALL_CONTENT="$ASSET_INFO\n$LOG_INFO"
+          # 清空README.md原有资产和日志相关内容（可选，若不需要保留历史内容）
+          sed -i '/### 最新版资产/,/### 更新日志/d' README.md
+          # 写入整合后的内容
+          echo -e "$ALL_CONTENT" >> README.md
 
       - name: 提交所有文件
         if: always()
