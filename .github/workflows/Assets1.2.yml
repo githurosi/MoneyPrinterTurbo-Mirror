@@ -49,6 +49,7 @@ jobs:
           done
 
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "ASSETS=${ASSETS[*]}" >> $GITHUB_OUTPUT # 输出资产列表变量内容
 
       - name: 同步更新日志
         id: update-log
@@ -77,9 +78,12 @@ jobs:
 
       - name: 更新主界面（README.md）
         run: |
+          ASSETS=(${{ steps.download-assets.outputs.ASSETS }})
+          echo "获取到的资产列表: ${ASSETS[*]}" # 再次确认获取的资产列表
+
           # 生成资产信息部分
           ASSET_INFO="### 最新版资产\n"
-          for asset in "${{ steps.download-assets.outputs.ASSETS }}"; do
+          for asset in "${ASSETS[@]}"; do
             ASSET_INFO+=" - $asset\n"
           done
           # 生成更新日志部分
