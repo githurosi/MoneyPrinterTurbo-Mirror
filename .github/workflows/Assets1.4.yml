@@ -70,8 +70,12 @@ jobs:
             exit 0
           fi
 
-          # 翻译日志（可选，如需英文日志可删除翻译行）
-          TRANSLATED_NOTES=$(echo "$RELEASE_NOTES" | trans -b -e google -t zh-CN || echo "$RELEASE_NOTES")
+          # 翻译日志（增强错误处理）
+          TRANSLATED_NOTES=$(echo "$RELEASE_NOTES" | trans -b -e google -t zh-CN 2>/dev/null)
+          if [ $? -ne 0 ]; then
+            echo "翻译失败，使用英文原文"
+            TRANSLATED_NOTES="$RELEASE_NOTES"
+          fi
 
           # 更新版本文件
           echo "$TAG_NAME" > version.txt
