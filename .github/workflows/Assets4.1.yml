@@ -63,10 +63,10 @@ jobs:
           TAG_NAME=$(echo "$response" | jq -r '.tag_name')
           RELEASE_NOTES=$(echo "$response" | jq -r '.body')
 
-          # 仅在版本变更或强制更新时同步日志
+          # 版本对比：若本地版本与远程一致且未强制更新，则跳过更新
           if [ "$LOCAL_VERSION" = "$TAG_NAME" ] && [ "$FORCE_UPDATE" != "true" ]; then
-            echo "无需更新日志"
-            return
+            echo "✅ 已是最新版本（$TAG_NAME），无需更新"
+            exit 0 # 使用exit退出脚本，而非return
           fi
 
           # 翻译日志（可选，如需英文日志可删除翻译行）
