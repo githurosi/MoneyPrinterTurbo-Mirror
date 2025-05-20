@@ -30,17 +30,31 @@ jobs:
           echo "RELEASE_ASSETS_URL=$RELEASE_ASSETS_URL" >> $GITHUB_OUTPUT
           echo "DEBUG_ASSETS_URL=$DEBUG_ASSETS_URL" >> $GITHUB_OUTPUT
 
-      - name: 下载 RELEASE 版本资产
-        if: steps.get-latest-release.outputs.RELEASE_ASSETS_URL != ''
+      - name: 检查并下载 RELEASE 版本资产
         run: |
-          echo "开始下载 RELEASE 版本资产: ${{ steps.get-latest-release.outputs.TAG_NAME }}"
-          wget -q --show-progress ${{ steps.get-latest-release.outputs.RELEASE_ASSETS_URL }} -O OpenCore-${{ steps.get-latest-release.outputs.TAG_NAME }}-RELEASE.zip
+          if [ -f "OpenCore-${{ steps.get-latest-release.outputs.TAG_NAME }}-RELEASE.zip" ]; then
+            echo "RELEASE 版本资产已存在，无需下载"
+          else
+            if [ -n "${{ steps.get-latest-release.outputs.RELEASE_ASSETS_URL }}" ]; then
+              echo "开始下载 RELEASE 版本资产: ${{ steps.get-latest-release.outputs.TAG_NAME }}"
+              wget -q --show-progress ${{ steps.get-latest-release.outputs.RELEASE_ASSETS_URL }} -O OpenCore-${{ steps.get-latest-release.outputs.TAG_NAME }}-RELEASE.zip
+            else
+              echo "未找到 RELEASE 版本资产链接，无法下载"
+            fi
+          fi
 
-      - name: 下载 DEBUG 版本资产
-        if: steps.get-latest-release.outputs.DEBUG_ASSETS_URL != ''
+      - name: 检查并下载 DEBUG 版本资产
         run: |
-          echo "开始下载 DEBUG 版本资产: ${{ steps.get-latest-release.outputs.TAG_NAME }}"
-          wget -q --show-progress ${{ steps.get-latest-release.outputs.DEBUG_ASSETS_URL }} -O OpenCore-${{ steps.get-latest-release.outputs.TAG_NAME }}-DEBUG.zip
+          if [ -f "OpenCore-${{ steps.get-latest-release.outputs.TAG_NAME }}-DEBUG.zip" ]; then
+            echo "DEBUG 版本资产已存在，无需下载"
+          else
+            if [ -n "${{ steps.get-latest-release.outputs.DEBUG_ASSETS_URL }}" ]; then
+              echo "开始下载 DEBUG 版本资产: ${{ steps.get-latest-release.outputs.TAG_NAME }}"
+              wget -q --show-progress ${{ steps.get-latest-release.outputs.DEBUG_ASSETS_URL }} -O OpenCore-${{ steps.get-latest-release.outputs.TAG_NAME }}-DEBUG.zip
+            else
+              echo "未找到 DEBUG 版本资产链接，无法下载"
+            fi
+          fi
 
       - name: 提交更新
         if: steps.get-latest-release.outputs.RELEASE_ASSETS_URL != '' || steps.get-latest-release.outputs.DEBUG_ASSETS_URL != ''
