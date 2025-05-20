@@ -12,3 +12,9 @@
  - 从ssdt-hv-dev.dsl`删除ACPI0007对象
  - 删除了不再需要的SSDT-HV-DEV-WS2022.DSL`
  - 在``sysreport''中添加了pci类名称
+### 最新版资产
+ - 
+
+### 更新日志
+#### 
+
