@@ -24,14 +24,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 需在仓库 Secrets 中配置
         run: |
           response=$(curl -s https://api.github.com/repos/acidanthera/OpenCorePkg/releases/latest)
-          export TAG_NAME=$(echo "$response" | jq -r '.tag_name')
-          export BODY=$(echo "$response" | jq -r '.body')
+          # 输出原始 API 响应内容，便于查看格式
+          echo "原始 API 响应内容：$response"
+          # 更稳健的 jq 命令，先判断字段是否存在再提取
+          export TAG_NAME=$(echo "$response" | jq -r 'if has("tag_name") then.tag_name else "" end' 2>&1) || echo "提取 tag_name 失败"
+          export BODY=$(echo "$response" | jq -r 'if has("body") then.body else "" end' 2>&1) || echo "提取 body 失败"
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "BODY=$BODY" >> $GITHUB_OUTPUT
 
       - name: 检查并创建日志展示区域
         run: |
-          if ! grep -q "## OpenCore 最新版本更新日志" README.md; then  # 修正 if 语法
+          if! grep -q "## OpenCore 最新版本更新日志" README.md; then
             echo "未找到日志展示区域，正在创建..."
             echo -e "\n## OpenCore 最新版本更新日志\n" >> README.md
           fi
