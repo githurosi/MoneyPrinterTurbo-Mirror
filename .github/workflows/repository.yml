@@ -12,7 +12,7 @@ jobs:
           # 目标仓库地址（格式：用户名/仓库名）
           repository: githurosi/moneyprinter-turbo
           # 关键：使用 PAT 权限克隆（需提前配置到仓库 Secrets）
-          token: ${{ secrets.MY_GITHUB_TOKEN }}  # 引用仓库中的 PAT 令牌
+          token: ${{ secrets.TARGET_PAT }}  # 引用仓库中的 PAT 令牌
           fetch-depth: 0  # 获取所有历史记录
           submodules: recursive  # 递归克隆子模块（如有）
 
