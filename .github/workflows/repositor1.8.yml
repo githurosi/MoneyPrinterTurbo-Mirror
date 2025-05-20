@@ -26,9 +26,21 @@ jobs:
           response=$(curl -s https://api.github.com/repos/acidanthera/OpenCorePkg/releases/latest)
           # 输出原始 API 响应内容，便于查看格式
           echo "原始 API 响应内容：$response"
-          # 更稳健的 jq 命令，先判断字段是否存在再提取
-          export TAG_NAME=$(echo "$response" | jq -r 'if has("tag_name") then.tag_name else "" end' 2>&1) || echo "提取 tag_name 失败"
-          export BODY=$(echo "$response" | jq -r 'if has("body") then.body else "" end' 2>&1) || echo "提取 body 失败"
+          # 提取 tag_name 并处理可能的错误
+          TAG_NAME=$(echo "$response" | jq -r 'if has("tag_name") then.tag_name else "" end' 2>&1)
+          if [ $? -ne 0 ]; then
+            echo "提取 tag_name 失败"
+            TAG_NAME=""
+          fi
+          # 提取 body 并处理转义字符
+          BODY=$(echo "$response" | jq -r 'if has("body") then.body else "" end' 2>&1)
+          if [ $? -ne 0 ]; then
+            echo "提取 body 失败"
+            BODY=""
+          else
+            # 去除 \r\n 等转义字符
+            BODY=$(echo "$BODY" | tr -d '\r\n')
+          fi
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "BODY=$BODY" >> $GITHUB_OUTPUT
 
@@ -42,8 +54,8 @@ jobs:
       - name: 更新 README 文件
         run: |
           # 使用英文方括号匹配占位符，并正确处理换行
-          sed -i "s/### 最新版本：\[版本号\]/### 最新版本：${{ steps.get-latest-release.outputs.TAG_NAME }}/g" README.md
-          sed -i "s/\[具体更新日志内容\]/$(echo '${{ steps.get-latest-release.outputs.BODY}}' | tr '\n' '\n')/g" README.md
+          sed -i "s/### 最新版本：\[版本号\]/### 最新版本：${TAG_NAME}/g" README.md
+          sed -i "s/\[具体更新日志内容\]/$BODY/g" README.md
 
       - name: 提交更改
         uses: stefanzweifel/git-auto-commit-action@v5
