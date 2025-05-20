@@ -93,9 +93,11 @@ jobs:
           LOG_INFO+="#### $TAG_NAME\n$TRANSLATED_NOTES"
           # 整合资产和日志信息
           ALL_CONTENT="$ASSET_INFO\n$LOG_INFO"
-          # 清空README.md原有资产和日志相关内容（可选，若不需要保留历史内容）
-          sed -i '/### 最新版资产/,/### 更新日志/d' README.md
-          # 写入整合后的内容
+
+          # 检查README.md是否存在，不存在则创建并写入内容
+          if [! -f README.md ]; then
+            echo "# 仓库信息" > README.md
+          fi
           echo -e "$ALL_CONTENT" >> README.md
 
       - name: 提交所有文件
