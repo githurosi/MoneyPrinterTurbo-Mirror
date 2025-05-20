@@ -14,12 +14,15 @@ jobs:
       - name: 检出仓库
         uses: actions/checkout@v4
 
+      - name: 安装 jq（确保解析 JSON）
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+
       - name: 获取最新 Release 信息
         id: get-latest-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 需在仓库 Secrets 中配置
         run: |
-          # 调用 GitHub API 获取最新 Release
           response=$(curl -s https://api.github.com/repos/acidanthera/OpenCorePkg/releases/latest)
           export TAG_NAME=$(echo "$response" | jq -r '.tag_name')
           export BODY=$(echo "$response" | jq -r '.body')
@@ -28,15 +31,16 @@ jobs:
 
       - name: 检查并创建日志展示区域
         run: |
-          if! grep -q "## OpenCore 最新版本更新日志" README.md; then
+          if ! grep -q "## OpenCore 最新版本更新日志" README.md; then  # 修正 if 语法
             echo "未找到日志展示区域，正在创建..."
             echo -e "\n## OpenCore 最新版本更新日志\n" >> README.md
           fi
 
       - name: 更新 README 文件
         run: |
+          # 使用英文方括号匹配占位符，并正确处理换行
           sed -i "s/### 最新版本：\[版本号\]/### 最新版本：${{ steps.get-latest-release.outputs.TAG_NAME }}/g" README.md
-          sed -i "s/\[具体更新日志内容\]/${{ steps.get-latest-release.outputs.BODY // /\\n}}/g" README.md
+          sed -i "s/\[具体更新日志内容\]/$(echo '${{ steps.get-latest-release.outputs.BODY}}' | tr '\n' '\n')/g" README.md
 
       - name: 提交更改
         uses: stefanzweifel/git-auto-commit-action@v5
