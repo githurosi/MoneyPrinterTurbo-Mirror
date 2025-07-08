@@ -12,3 +12,10 @@
  - 从ssdt-hv-dev.dsl`删除ACPI0007对象
  - 删除了不再需要的SSDT-HV-DEV-WS2022.DSL`
  - 在``sysreport''中添加了pci类名称
+## 📅 更新日志
+### 1.0.5
+#### V1.0.5
+ - 修复了pci设备信息中的不正确打印在“ sysreport”中
+ - 修复了内核部分中延长的kext路径的Ocvalidate错误消息，thx @corpnewt
+ - 修复了MACOS 26的Kext注入兼容性问题
+ - 更新用于SMBIO和其余的固件版本的内置固件版本
